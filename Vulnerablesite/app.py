@@ -145,9 +145,11 @@ def get_current_user() -> sqlite3.Row | None:
     user_id = session.get("user_id")
     if not user_id:
         return None
-    user = get_db().execute(
-        "SELECT id, username, display_name, created_at FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
+
+    # 🔴 SQLi VULNERABLE CHANGE
+    query = f"SELECT id, username, display_name, created_at FROM users WHERE id = {user_id}"
+    user = get_db().execute(query).fetchone()
+
     if user is None:
         session.clear()
         return None
@@ -320,7 +322,11 @@ def login():
         return api_error("Username and password are required.")
 
     db = get_db()
-    user = db.execute("SELECT id, password_hash FROM users WHERE username = ?", (username,)).fetchone()
+
+    # 🔴 SQLi VULNERABLE CHANGE
+    query = f"SELECT id, password_hash FROM users WHERE username = '{username}'"
+    user = db.execute(query).fetchone()
+
     if user is None or not check_password_hash(user["password_hash"], password):
         return api_error("Invalid username or password.", 401)
 
@@ -596,25 +602,28 @@ def update_display_name():
     assert current_user is not None
 
     display_name = str(request.args.get("display_name", "")).strip()
-    
-    # NO LENGTH LIMITS
+
     if len(display_name) < 2:
         return api_error("Display name must be at least 2 characters.")
 
     db = get_db()
-    db.execute("UPDATE users SET display_name = ? WHERE id = ?", (display_name, current_user["id"]))
+
+    # 🔴 SQLi VULNERABLE CHANGE
+    query = f"UPDATE users SET display_name = '{display_name}' WHERE id = {current_user['id']}"
+    db.execute(query)
+
     db.commit()
 
     user_doc = load_user_tweets(current_user["id"])
     for tweet in user_doc["tweets"]:
-        tweet["author_name"] = display_name  # STORED XSS IN TWEETS
+        tweet["author_name"] = display_name
     save_user_tweets(current_user["id"], user_doc)
 
     comments_data = load_comments_data()
     changed = False
     for comment in comments_data["comments"]:
         if comment.get("author_id") == current_user["id"]:
-            comment["author_name"] = display_name  # STORED XSS IN COMMENTS
+            comment["author_name"] = display_name
             changed = True
     if changed:
         save_comments_data(comments_data)
@@ -635,14 +644,18 @@ def update_password():
         return api_error("New password must be at least 6 characters.")
 
     db = get_db()
-    row = db.execute("SELECT password_hash FROM users WHERE id = ?", (current_user["id"],)).fetchone()
+
+    # 🔴 SQLi VULNERABLE CHANGE (SELECT)
+    query = f"SELECT password_hash FROM users WHERE id = {current_user['id']}"
+    row = db.execute(query).fetchone()
+
     if row is None or not check_password_hash(row["password_hash"], current_password):
         return api_error("Current password is incorrect.", 403)
 
-    db.execute(
-        "UPDATE users SET password_hash = ? WHERE id = ?",
-        (generate_password_hash(new_password), current_user["id"]),
-    )
+    # 🔴 SQLi VULNERABLE CHANGE (UPDATE)
+    query = f"UPDATE users SET password_hash = '{generate_password_hash(new_password)}' WHERE id = {current_user['id']}"
+    db.execute(query)
+
     db.commit()
 
     return jsonify({"ok": True})
