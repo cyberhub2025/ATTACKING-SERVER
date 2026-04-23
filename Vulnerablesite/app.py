@@ -146,7 +146,7 @@ def get_current_user() -> sqlite3.Row | None:
     if not user_id:
         return None
 
-    # 🔴 SQLi VULNERABLE CHANGE
+    # SQLi VULNERABLE CHANGE
     query = f"SELECT id, username, display_name, created_at FROM users WHERE id = {user_id}"
     user = get_db().execute(query).fetchone()
 
@@ -323,7 +323,7 @@ def login():
 
     db = get_db()
 
-    # 🔴 SQLi VULNERABLE CHANGE
+    # SQLi VULNERABLE CHANGE
     query = f"SELECT id, password_hash FROM users WHERE username = '{username}'"
     user = db.execute(query).fetchone()
 
@@ -608,7 +608,7 @@ def update_display_name():
 
     db = get_db()
 
-    # 🔴 SQLi VULNERABLE CHANGE
+    # SQLi VULNERABLE CHANGE
     query = f"UPDATE users SET display_name = '{display_name}' WHERE id = {current_user['id']}"
     db.execute(query)
 
@@ -645,14 +645,14 @@ def update_password():
 
     db = get_db()
 
-    # 🔴 SQLi VULNERABLE CHANGE (SELECT)
+    # SQLi VULNERABLE CHANGE (SELECT)
     query = f"SELECT password_hash FROM users WHERE id = {current_user['id']}"
     row = db.execute(query).fetchone()
 
     if row is None or not check_password_hash(row["password_hash"], current_password):
         return api_error("Current password is incorrect.", 403)
 
-    # 🔴 SQLi VULNERABLE CHANGE (UPDATE)
+    # SQLi VULNERABLE CHANGE (UPDATE)
     query = f"UPDATE users SET password_hash = '{generate_password_hash(new_password)}' WHERE id = {current_user['id']}"
     db.execute(query)
 
