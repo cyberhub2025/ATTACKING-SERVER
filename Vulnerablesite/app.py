@@ -299,7 +299,7 @@ def register():
     try:
         cursor = db.execute(
             "INSERT INTO users (username, password_hash, display_name, created_at) VALUES (?, ?, ?, ?)",
-            (username, generate_password_hash(password), display_name, utc_now()),
+            (username, password, display_name, utc_now()),
         )
         db.commit()
     except sqlite3.IntegrityError:
@@ -327,7 +327,7 @@ def login():
     query = f"SELECT id, password_hash FROM users WHERE username = '{username}'"
     user = db.execute(query).fetchone()
 
-    if user is None or not check_password_hash(user["password_hash"], password):
+    if user is None or user["password_hash"] != password:
         return api_error("Invalid username or password.", 401)
 
     session.clear()
@@ -649,11 +649,11 @@ def update_password():
     query = f"SELECT password_hash FROM users WHERE id = {current_user['id']}"
     row = db.execute(query).fetchone()
 
-    if row is None or not check_password_hash(row["password_hash"], current_password):
+    if row is None or row["password_hash"] != current_password:
         return api_error("Current password is incorrect.", 403)
 
     # SQLi VULNERABLE CHANGE (UPDATE)
-    query = f"UPDATE users SET password_hash = '{generate_password_hash(new_password)}' WHERE id = {current_user['id']}"
+    query = f"UPDATE users SET password_hash = '{new_password}' WHERE id = {current_user['id']}"
     db.execute(query)
 
     db.commit()
